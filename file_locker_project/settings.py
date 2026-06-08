@@ -123,6 +123,18 @@ DATABASES = {
     }
 }
 
+# Vercel Serverless environment compatibility: copy sqlite database to /tmp to allow write operations
+if os.environ.get('VERCEL') == '1' or 'VERCEL' in os.environ:
+    import shutil
+    db_path = Path('/tmp') / 'db.sqlite3'
+    original_db = BASE_DIR / 'db.sqlite3'
+    if original_db.exists() and not db_path.exists():
+        try:
+            shutil.copy2(original_db, db_path)
+        except Exception as e:
+            print(f"Error copying database to /tmp: {e}")
+    DATABASES['default']['NAME'] = db_path
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
