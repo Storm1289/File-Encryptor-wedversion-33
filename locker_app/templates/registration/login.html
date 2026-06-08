@@ -87,46 +87,58 @@
             {% trans "Continue with Google" %}
         </button>
 
-        <script type="module">
-            import { auth, provider, signInWithPopup } from "{% static 'locker_app/js/google.js' %}";
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                let tokenClient;
+                
+                function initGoogleAuth() {
+                    if (typeof google !== 'undefined') {
+                        tokenClient = google.accounts.oauth2.initTokenClient({
+                            client_id: '825631348847-q8or3lr8fbq458qb1vmdjs37edrkmdu0.apps.googleusercontent.com',
+                            scope: 'email profile openid',
+                            callback: async (tokenResponse) => {
+                                if (tokenResponse && tokenResponse.access_token) {
+                                    try {
+                                        const response = await fetch('/google-login/', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'X-CSRFToken': '{{ csrf_token }}'
+                                            },
+                                            body: JSON.stringify({ access_token: tokenResponse.access_token })
+                                        });
 
-            document.getElementById('googleLoginBtn').addEventListener('click', async () => {
-                try {
-                    console.log("Starting Google Sign In...");
-                    const result = await signInWithPopup(auth, provider);
-                    console.log("Popup success");
-
-                    const user = result.user;
-                    const token = await user.getIdToken();
-                    console.log("Token received");
-
-                    // Send to Django
-                    const response = await fetch('/google-login/', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ id_token: token })
-                    });
-
-                    const data = await response.json();
-                    if (data.success) {
-                        if (data.is_new_user) {
-                            window.location.href = "{% url 'change_username' %}";
-                        } else {
-                            window.location.href = "{% url 'home' %}";
-                        }
+                                        const data = await response.json();
+                                        if (data.success) {
+                                            if (data.is_new_user) {
+                                                window.location.href = "{% url 'change_username' %}";
+                                            } else {
+                                                window.location.href = "{% url 'home' %}";
+                                            }
+                                        } else {
+                                            alert('Login failed by Server: ' + data.error);
+                                        }
+                                    } catch (error) {
+                                        console.error("Error signing in with Google", error);
+                                        alert("An error occurred during authentication.");
+                                    }
+                                }
+                            }
+                        });
                     } else {
-                        alert('Login failed by Server: ' + data.error);
+                        setTimeout(initGoogleAuth, 100);
                     }
-                } catch (error) {
-                    if (error.code === 'auth/popup-closed-by-user') {
-                        console.log("Sign-in cancelled by user");
-                        return;
-                    }
-                    console.error("Error signing in with Google", error);
-                    alert(error.message);
                 }
+
+                initGoogleAuth();
+
+                document.getElementById('googleLoginBtn').addEventListener('click', () => {
+                    if (tokenClient) {
+                        tokenClient.requestAccessToken();
+                    } else {
+                        alert("Google Sign-In is still loading. Please try again in a moment.");
+                    }
+                });
             });
         </script>
 

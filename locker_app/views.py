@@ -23,26 +23,28 @@ def google_login(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
+            access_token = data.get('access_token')
             id_token = data.get('id_token')
             
-            # Verify token with Firebase Identity Toolkit
-            # This is required because Firebase ID tokens are not checking against standard Google OAuth2 endpoints
-            api_key = "AIzaSyAd_a-I9U014ArpshXVAaSDL8hRHG4a4_k"
-            verify_url = f"https://identitytoolkit.googleapis.com/v1/accounts:lookup?key={api_key}"
-            
-            response = requests.post(verify_url, json={'idToken': id_token})
-            
-            if response.status_code != 200:
-                print(f"Token verification failed: {response.text}") # Debug
-                error_detail = response.json().get('error', {}).get('message', response.text)
-                return JsonResponse({'success': False, 'error': f"Firebase rejected token: {error_detail}"})
-                
-            firebase_data = response.json()
-            users = firebase_data.get('users', [])
-            if not users:
-                 return JsonResponse({'success': False, 'error': 'No user found in token'})
-            
-            email = users[0].get('email')
+            email = None
+            if access_token:
+                # Verify access token with Google's UserInfo API
+                verify_url = f"https://www.googleapis.com/oauth2/v3/userinfo?access_token={access_token}"
+                response = requests.get(verify_url)
+                if response.status_code == 200:
+                    email = response.json().get('email')
+                else:
+                    return JsonResponse({'success': False, 'error': f"Google token verification failed: {response.text}"})
+            elif id_token:
+                # Verify ID token with Google's TokenInfo API
+                verify_url = f"https://oauth2.googleapis.com/tokeninfo?id_token={id_token}"
+                response = requests.get(verify_url)
+                if response.status_code == 200:
+                    email = response.json().get('email')
+                else:
+                    return JsonResponse({'success': False, 'error': f"Google ID token verification failed: {response.text}"})
+            else:
+                return JsonResponse({'success': False, 'error': 'Missing access_token or id_token'})
             
             if not email:
                  return JsonResponse({'success': False, 'error': 'No email found'})
