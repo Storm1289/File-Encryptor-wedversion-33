@@ -11,6 +11,10 @@
     ],
     "routes": [
         {
+            "src": "/static/(.*)",
+            "dest": "locker_app/static/$1"
+        },
+        {
             "src": "/(.*)",
             "dest": "file_locker_project/wsgi.py"
         }
