@@ -54,15 +54,20 @@ def google_login(request):
             try:
                 user = User.objects.get(email=email)
             except User.DoesNotExist:
-                # Create new user
-                is_new_user = True
-                username = email.split('@')[0]
-                # Ensure unique username
-                base_username = username
-                counter = 1
-                while User.objects.filter(username=username).exists():
-                    username = f"{base_username}{counter}"
-                    counter += 1
+                # If they have logged in before (we have their email in session), 
+                # recreate the user with their previous username and skip name change redirect.
+                if request.session.get('user_email') == email:
+                    is_new_user = False
+                    username = request.session.get('user_username', email.split('@')[0])
+                else:
+                    is_new_user = True
+                    username = email.split('@')[0]
+                    # Ensure unique username
+                    base_username = username
+                    counter = 1
+                    while User.objects.filter(username=username).exists():
+                        username = f"{base_username}{counter}"
+                        counter += 1
                     
                 user = User.objects.create_user(username=username, email=email)
                 user.save()
@@ -77,6 +82,15 @@ def google_login(request):
             
     # If GET request or other method, redirect to login
     return redirect('login')
+
+from django.contrib.auth import logout
+
+def logout_view(request):
+    """
+    Handle user logout via GET or POST.
+    """
+    logout(request)
+    return redirect('home')
 
 def signup(request):
     """
