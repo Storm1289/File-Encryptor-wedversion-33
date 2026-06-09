@@ -197,3 +197,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Upload settings
 DATA_UPLOAD_MAX_MEMORY_SIZE = 524288000  # 500 MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 524288000  # 500 MB
+
+# Use cookie-based sessions to prevent session loss on serverless Vercel deployments
+SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
